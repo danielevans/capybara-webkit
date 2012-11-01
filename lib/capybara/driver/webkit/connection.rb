@@ -6,15 +6,14 @@ class Capybara::Driver::Webkit
   class Connection
     WEBKIT_SERVER_START_TIMEOUT = 15
 
-    attr_reader :port
+    attr_reader :port, :pid
 
     def initialize(options = {})
       @socket_class = options[:socket_class] || TCPSocket
       @stdout       = options.has_key?(:stdout) ?
                         options[:stdout] :
                         $stdout
-      start_server
-      connect
+      restart
     end
 
     def puts(string)
@@ -33,12 +32,22 @@ class Capybara::Driver::Webkit
       @socket.read(length)
     end
 
+    def shutdown
+      kill_process(@pid)
+      @pid = nil
+    end
+
+    def restart
+      start_server
+      connect
+    end
+
     private
 
     def start_server
       pipe = fork_server
       @port = discover_port(pipe)
-      @stdout_thread = Thread.new do
+      @stdout_thread ||= Thread.new do
         Thread.current.abort_on_exception = true
         forward_stdout(pipe)
       end
@@ -52,10 +61,12 @@ class Capybara::Driver::Webkit
     end
 
     def kill_process(pid)
-      if RUBY_PLATFORM =~ /mingw32/
-        Process.kill(9, pid)
-      else
-        Process.kill("INT", pid)
+      if pid
+        if RUBY_PLATFORM =~ /mingw32/
+          Process.kill(9, pid)
+        else
+          Process.kill("INT", pid)
+        end
       end
     end
 

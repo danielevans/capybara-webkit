@@ -98,6 +98,9 @@ class Capybara::Driver::Webkit
     alias_method :window_handle, :get_window_handle
 
     def command(name, *args)
+      if @connection.pid.blank?
+        @connection.restart
+      end
       @connection.puts name
       @connection.puts args.size
       args.each do |arg|
@@ -106,6 +109,13 @@ class Capybara::Driver::Webkit
       end
       check
       read_response
+    end
+
+    def shutdown
+      @connection.shutdown
+
+      # flush the current session driver so that webkit can be properly restarted
+      Capybara.current_session.instance_variable_set(:@driver, nil)
     end
 
     def evaluate_script(script)
