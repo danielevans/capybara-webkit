@@ -35,6 +35,10 @@ class Capybara::Driver::Webkit
     def shutdown
       kill_process(@pid)
       @pid = nil
+      @socket = nil
+      @port = nil
+      @stdout_thread.kill
+      @stdout_thread = nil
     end
 
     def restart
